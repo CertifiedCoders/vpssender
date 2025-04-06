@@ -1,3 +1,4 @@
+import glob
 import requests
 import os
 import sys
@@ -93,40 +94,58 @@ def main():
 
     while True:
         try:
-            filename = Prompt.ask("\n[bold yellow]Enter the file or folder name:[/bold yellow]").strip()
+            filename = Prompt.ask("\n[bold yellow]Enter the file or folder name (use *.ext for bulk send):[/bold yellow]").strip()
             if not filename:
                 console.print("[bold red]File name cannot be empty. Please try again.[/bold red]")
                 continue
 
-            zip_created = False
-
-            if os.path.isdir(filename):
-                zip_basename = os.path.basename(filename.rstrip(os.sep))
-                zip_file = zip_basename + '.zip'
-                zip_filepath = os.path.abspath(zip_file)
-                console.print(f"[blue]Zipping directory '{filename}' into '{zip_file}'...[/blue]")
-                try:
-                    shutil.make_archive(zip_basename, 'zip', filename)
-                    zip_created = True
-                    filename = zip_filepath
-                except Exception as e:
-                    console.print(f"[bold red]Failed to zip directory: {e}[/bold red]")
+            if filename.startswith("*"):
+                # Advanced pattern match
+                extension = filename.replace("*", "").strip()
+                if not extension:
+                    console.print("[bold red]Invalid pattern provided. Example: *.txt[/bold red]")
                     continue
-            elif not os.path.isfile(filename):
-                console.print(f'[bold red]The file or directory "{filename}" does not exist.[/bold red]')
-                continue
+
+                files_to_send = glob.glob(f"*{extension}")
+                if not files_to_send:
+                    console.print(f"[bold red]No files with extension '{extension}' found in the current directory.[/bold red]")
+                    continue
+
+                console.print(f"[bold green]Found {len(files_to_send)} file(s) to send:[/bold green] {', '.join(files_to_send)}")
+                for file_path in files_to_send:
+                    send_file(bot_token, chat_id, file_path)
+                    sleep(1)  # Optional small delay between sends
+
             else:
-                console.print(f"[blue]Processing '{filename}'...[/blue]")
-                sleep(1)
+                zip_created = False
 
-            send_file(bot_token, chat_id, filename)
+                if os.path.isdir(filename):
+                    zip_basename = os.path.basename(filename.rstrip(os.sep))
+                    zip_file = zip_basename + '.zip'
+                    zip_filepath = os.path.abspath(zip_file)
+                    console.print(f"[blue]Zipping directory '{filename}' into '{zip_file}'...[/blue]")
+                    try:
+                        shutil.make_archive(zip_basename, 'zip', filename)
+                        zip_created = True
+                        filename = zip_filepath
+                    except Exception as e:
+                        console.print(f"[bold red]Failed to zip directory: {e}[/bold red]")
+                        continue
+                elif not os.path.isfile(filename):
+                    console.print(f'[bold red]The file or directory "{filename}" does not exist.[/bold red]')
+                    continue
+                else:
+                    console.print(f"[blue]Processing '{filename}'...[/blue]")
+                    sleep(1)
 
-            if zip_created:
-                try:
-                    os.remove(filename)
-                    console.print(f"[green]Deleted temporary zip file '{filename}'.[/green]")
-                except Exception as e:
-                    console.print(f"[bold red]Failed to delete temporary zip file: {e}[/bold red]")
+                send_file(bot_token, chat_id, filename)
+
+                if zip_created:
+                    try:
+                        os.remove(filename)
+                        console.print(f"[green]Deleted temporary zip file '{filename}'.[/green]")
+                    except Exception as e:
+                        console.print(f"[bold red]Failed to delete temporary zip file: {e}[/bold red]")
 
             choice = Prompt.ask(
                 "\n[bold magenta]Do you want to send another file or folder?[/bold magenta] [bold yellow](y/n)[/bold yellow]",
@@ -140,6 +159,7 @@ def main():
         except KeyboardInterrupt:
             console.print("\n[bold cyan]:) Have a nice day and see you later![/bold cyan]")
             sys.exit()
+
 
 if __name__ == "__main__":
     main()
