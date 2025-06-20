@@ -60,7 +60,7 @@ pip install -r requirements.txt
 
 3. **Run the Tool:**
 ```bash
-python3 vpssender.py
+python3 sender.py
 ```
 
 ---
